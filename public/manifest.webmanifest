@@ -1,0 +1,12 @@
+{
+  "name": "Moto Academy",
+  "short_name": "Moto Academy",
+  "description": "Come funziona una moto, spiegato in 3D.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0f14",
+  "theme_color": "#0d0f14",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
