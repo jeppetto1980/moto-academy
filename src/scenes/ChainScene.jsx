@@ -5,6 +5,37 @@ import { Html, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import Callout from '../components/Callout'
 import { mat, PathFlow, pulseHL, sprocketGeo } from './parts'
+import { useMech, circle, union, diff, extrude, lathe } from './mech'
+
+// Ruota dentata per catena: vani semicircolari dove si appoggiano i rulli, fori di alleggerimento e bulloni
+function chainSprocketGeo(r, teeth, depth, { windows = 0, hole = 0.08 } = {}) {
+  const roll = PITCH * 0.34
+  const gaps = []
+  for (let i = 0; i < teeth; i++) {
+    const a = ((i + 0.5) / teeth) * Math.PI * 2
+    gaps.push(circle(Math.cos(a) * r, Math.sin(a) * r, roll, 14))
+  }
+  let shape = diff(circle(0, 0, r + PITCH * 0.28, teeth * 6), ...gaps, circle(0, 0, hole, 32))
+  if (windows) {
+    const cuts = []
+    const ri = hole + 0.12
+    const ro = r - PITCH * 0.9
+    for (let k = 0; k < windows; k++) {
+      const a0 = (k / windows) * Math.PI * 2 + 0.22
+      const a1 = ((k + 1) / windows) * Math.PI * 2 - 0.22
+      const o = circle(0, 0, ro, 16, a0, a1)[0]
+      const n = circle(0, 0, ri, 10, a1, a0)[0]
+      cuts.push([[...o, ...n]])
+    }
+    shape = diff(shape, ...cuts)
+  }
+  return extrude(shape, depth - 0.01, 0.005, -(depth - 0.01) / 2, 6)
+}
+// piastrina della catena a "8"
+function plateGeo(w, t) {
+  const s = union(circle(-PITCH / 2, 0, w / 2, 20), circle(PITCH / 2, 0, w / 2, 20), [[[-PITCH / 2, -w * 0.36], [PITCH / 2, -w * 0.36], [PITCH / 2, w * 0.36], [-PITCH / 2, w * 0.36]]])
+  return extrude(s, t, 0, -t / 2, 6)
+}
 
 const PITCH = 0.075
 const rOf = (teeth) => (teeth * PITCH) / (2 * Math.PI) * 1.0 + 0.02
@@ -73,15 +104,28 @@ function Drive({ front = 14, rear = 43, sag = false, lube = false, refs, hl }) {
   const path = useMemo(() => chainPath(rf, rr), [rf, rr])
   const N = Math.floor(path.L / PITCH)
   const midY = -(rr + rf) / 2
-  const geos = useMemo(() => ({ f: sprocketGeo(rf, front, 0.1), r: sprocketGeo(rr, rear, 0.08) }), [rf, rr, front, rear])
+  const M = useMech()
+  const geos = useMemo(
+    () => ({
+      f: chainSprocketGeo(rf, front, 0.1, { hole: 0.06 }),
+      r: chainSprocketGeo(rr, rear, 0.08, { windows: 6, hole: 0.12 }),
+      plate: plateGeo(0.06, 0.012),
+      tyre: lathe([[0.98, -0.12], [1.04, -0.16], [1.18, -0.17], [1.3, -0.12], [1.36, 0], [1.3, 0.12], [1.18, 0.17], [1.04, 0.16], [0.98, 0.12]], 96),
+      rim: lathe([[0.9, -0.13], [0.99, -0.13], [0.99, -0.1], [0.94, -0.08], [0.94, 0.08], [0.99, 0.1], [0.99, 0.13], [0.9, 0.13], [0.88, 0], [0.9, -0.13]], 96),
+      hub: lathe([[0.1, -0.2], [0.22, -0.2], [0.24, -0.1], [0.24, 0.1], [0.22, 0.2], [0.1, 0.2]], 40),
+    }),
+    [rf, rr, front, rear]
+  )
   const m = useMemo(
     () => ({
-      pignone: mat('#c4c9d2', { metalness: 0.9 }),
-      corona: mat('#d8a51a', { metalness: 0.8 }),
-      plateA: mat('#5a606b', { metalness: 0.9 }),
-      plateB: mat('#9aa3b2', { metalness: 0.9 }),
-      tire: mat('#121317', { metalness: 0, roughness: 0.95 }),
-      rim: mat('#1c1f26'),
+      pignone: M.steel.clone(),
+      corona: new THREE.MeshPhysicalMaterial({ color: '#d9a43a', metalness: 0.9, roughness: 0.25, clearcoat: 0.6 }),
+      plateA: mat('#4a4f58', { metalness: 0.9, roughness: 0.35 }),
+      plateB: mat('#b9bec6', { metalness: 0.95, roughness: 0.25 }),
+      roller: mat('#8c929c', { metalness: 0.9, roughness: 0.3 }),
+      tire: new THREE.MeshStandardMaterial({ color: '#16171a', metalness: 0, roughness: 0.9 }),
+      rim: M.blackPaint,
+      alu: M.alu,
       mark: new THREE.MeshBasicMaterial({ color: '#ff6a1a' }),
       finger: mat('#e0a98a', { metalness: 0, roughness: 0.8 }),
     }),
@@ -89,6 +133,7 @@ function Drive({ front = 14, rear = 43, sag = false, lube = false, refs, hl }) {
   )
   const linksA = useRef()
   const linksB = useRef()
+  const rollersI = useRef()
   const fr = useRef()
   const rr_ = useRef()
   const finger = useRef()
@@ -102,13 +147,24 @@ function Drive({ front = 14, rear = 43, sag = false, lube = false, refs, hl }) {
     const sg = sag ? 0.12 + 0.1 * Math.sin(t * 2.2) : 0
     for (let i = 0; i < N; i++) {
       path.at(off.current + i * PITCH, sg, tmp)
-      dummy.position.set(tmp[0], tmp[1], 0)
+      // piastrine interne (scure) ed esterne (chiare) alternate, su entrambi i lati; rullo a ogni passo
+      const zz = i % 2 ? 0.045 : 0.065
       dummy.rotation.set(0, 0, tmp[2])
+      dummy.position.set(tmp[0], tmp[1], zz)
       dummy.updateMatrix()
-      ;(i % 2 ? linksA : linksB).current.setMatrixAt(Math.floor(i / 2), dummy.matrix)
+      ;(i % 2 ? linksA : linksB).current.setMatrixAt(Math.floor(i / 2) * 2, dummy.matrix)
+      dummy.position.set(tmp[0], tmp[1], -zz)
+      dummy.updateMatrix()
+      ;(i % 2 ? linksA : linksB).current.setMatrixAt(Math.floor(i / 2) * 2 + 1, dummy.matrix)
+      path.at(off.current + i * PITCH - PITCH / 2, sg, tmp)
+      dummy.position.set(tmp[0], tmp[1], 0)
+      dummy.rotation.set(Math.PI / 2, 0, 0)
+      dummy.updateMatrix()
+      rollersI.current.setMatrixAt(i, dummy.matrix)
     }
     linksA.current.instanceMatrix.needsUpdate = true
     linksB.current.instanceMatrix.needsUpdate = true
+    rollersI.current.instanceMatrix.needsUpdate = true
     fr.current.rotation.z = -off.current / rf
     rr_.current.rotation.z = -off.current / rr
     if (finger.current) finger.current.position.y = midY - sg - 0.2
@@ -118,15 +174,17 @@ function Drive({ front = 14, rear = 43, sag = false, lube = false, refs, hl }) {
   })
   const half = Math.ceil(N / 2)
   return (
-    <group>
+    <group rotation={[0.08, -0.32, 0]}>
       {/* ruota posteriore attorno alla corona */}
       <group position={[XR, 0, -0.25]}>
-        <mesh material={m.tire}>
-          <torusGeometry args={[1.2, 0.2, 16, 64]} />
-        </mesh>
-        <mesh material={m.rim}>
-          <torusGeometry args={[1.0, 0.04, 8, 64]} />
-        </mesh>
+        <mesh geometry={geos.tyre} material={m.tire} rotation={[Math.PI / 2, 0, 0]} />
+        <mesh geometry={geos.rim} material={m.rim} rotation={[Math.PI / 2, 0, 0]} />
+        <mesh geometry={geos.hub} material={m.alu} rotation={[Math.PI / 2, 0, 0]} />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <mesh key={i} material={m.rim} rotation={[0, 0, (i / 5) * Math.PI * 2]} position={[0, 0, 0]}>
+            <boxGeometry args={[0.07, 1.8, 0.05]} />
+          </mesh>
+        ))}
       </group>
       <group ref={refs?.pignone} position={[XF, 0, 0]}>
         <group ref={fr}>
@@ -142,19 +200,18 @@ function Drive({ front = 14, rear = 43, sag = false, lube = false, refs, hl }) {
           <mesh material={m.mark} position={[0, rr * 0.6, 0.05]}>
             <boxGeometry args={[0.05, rr * 0.4, 0.02]} />
           </mesh>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <mesh key={i} material={m.rim} position={[Math.cos((i / 5) * Math.PI * 2) * rr * 0.55, Math.sin((i / 5) * Math.PI * 2) * rr * 0.55, 0.05]}>
-              <cylinderGeometry args={[0.07, 0.07, 0.04, 12]} />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <mesh key={i} material={M.steel} position={[Math.cos(((i + 0.5) / 6) * Math.PI * 2) * 0.2, Math.sin(((i + 0.5) / 6) * Math.PI * 2) * 0.2, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.03, 0.03, 0.03, 6]} />
             </mesh>
           ))}
         </group>
       </group>
       <group ref={refs?.catena} position={[(XF + XR) / 2, rr * 0.9, 0]} />
-      <instancedMesh ref={linksA} args={[null, null, half]} material={m.plateA} frustumCulled={false}>
-        <boxGeometry args={[PITCH * 1.25, 0.05, 0.11]} />
-      </instancedMesh>
-      <instancedMesh ref={linksB} args={[null, null, half]} material={m.plateB} frustumCulled={false}>
-        <boxGeometry args={[PITCH * 1.25, 0.045, 0.14]} />
+      <instancedMesh ref={linksA} args={[geos.plate, m.plateA, half * 2]} frustumCulled={false} />
+      <instancedMesh ref={linksB} args={[geos.plate, m.plateB, half * 2]} frustumCulled={false} />
+      <instancedMesh ref={rollersI} args={[null, m.roller, N]} frustumCulled={false}>
+        <cylinderGeometry args={[PITCH * 0.3, PITCH * 0.3, 0.08, 10]} />
       </instancedMesh>
       {sag && (
         <group>

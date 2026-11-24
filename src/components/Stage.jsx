@@ -37,7 +37,7 @@ function StageLoader({ hidden }) {
     </div>
   )
 }
-import { ContactShadows, OrbitControls } from '@react-three/drei'
+import { ContactShadows, Environment, Lightformer, OrbitControls } from '@react-three/drei'
 
 // Contenitore 3D comune: luci, ombra a terra e controlli touch (ruota con un dito, zoom con due)
 export default function Stage({ children, camera, target = [0, 0, 0], controlsRef, autoRotate = false, minD = 3, maxD = 12, shadowY = -1.5, className = 'stage', dim = false, bloom = false }) {
@@ -50,6 +50,18 @@ export default function Stage({ children, camera, target = [0, 0, 0], controlsRe
         <hemisphereLight args={['#dfe8ff', '#20242e', dim ? 0.35 : 0.9]} />
         <directionalLight position={[4, 6, 5]} intensity={dim ? 0.5 : 1.6} />
         <directionalLight position={[-5, 3, -4]} intensity={dim ? 0.3 : 0.6} color="#9fc4ff" />
+        {!dim && (
+          // riflessi da studio fotografico: rendono credibili metalli e cromature
+          <Environment resolution={256} frames={1}>
+            <Lightformer form="rect" intensity={2.2} position={[0, 5, -2]} scale={[10, 2, 1]} rotation-x={Math.PI / 2} />
+            <Lightformer form="rect" intensity={1.4} position={[-5, 1, 2]} scale={[2, 6, 1]} rotation-y={Math.PI / 2} />
+            <Lightformer form="rect" intensity={1.1} position={[5, 1, 1]} scale={[2, 6, 1]} rotation-y={-Math.PI / 2} color="#cfe0ff" />
+            <Lightformer form="ring" intensity={1.6} position={[2, 3, 6]} scale={2.5} color="#ffd9b0" />
+            <Lightformer form="rect" intensity={1.2} position={[0, 1.5, 8]} scale={[8, 4, 1]} />
+            <Lightformer form="rect" intensity={0.8} position={[-3, -1, 5]} scale={[3, 2, 1]} color="#bcd4ff" />
+            <Lightformer form="rect" intensity={0.5} position={[0, -3, 0]} scale={[10, 10, 1]} rotation-x={-Math.PI / 2} color="#404858" />
+          </Environment>
+        )}
         <Suspense fallback={null}>{children}<ReadySignal onReady={onReady} /></Suspense>
         <ContactShadows position={[0, shadowY, 0]} opacity={dim ? 0.7 : 0.45} scale={10} blur={2.4} far={4} />
         <OrbitControls

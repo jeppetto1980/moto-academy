@@ -5,6 +5,7 @@ import { Html, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import Callout from '../components/Callout'
 import { glass, mat, Pipe, pulseHL } from './parts'
+import { useMech, SectionBlock, HalfLathe, valveGeo, springGeo, lathe, rect, poly, strip, smooth, union, diff, extrude } from './mech'
 
 // Comando del gas condiviso con l'interfaccia (pulsante "tieni premuto per dare gas")
 export const fuelInput = { held: false, value: 0.15, base: 0.15 }
@@ -36,28 +37,79 @@ function Label({ text, color = '#eef1f6', bg = 'rgba(14,17,24,.8)' }) {
 
 function Duct({ mode, throttleRef, hl, refs, showLabels = true }) {
   const carb = mode === 'carb'
-  const ductGeo = useDuctGeo(carb)
+  const M = useMech()
   const m = useMemo(
     () => ({
+      M,
       duct: glass('#9fc4ff', 0.13),
       box: glass('#c0c8d6', 0.1),
-      filtro: mat('#e2c48a', { metalness: 0, roughness: 0.9 }),
+      filtro: mat('#e8cf98', { metalness: 0, roughness: 0.95 }),
       fuel: new THREE.MeshStandardMaterial({ color: '#ff9a2a', transparent: true, opacity: 0.75, roughness: 0.3 }),
       float: mat('#f4f6fb', { metalness: 0.1 }),
-      slide: mat('#b9c0cc'),
-      getto: mat('#d8a51a', { metalness: 0.8 }),
-      iniettore: mat('#2b2f38'),
+      slide: M.steel.clone(),
+      getto: M.brass.clone(),
+      iniettore: mat('#23262d', { metalness: 0.2, roughness: 0.5 }),
       pompa: mat('#3aa0ff', { metalness: 0.3 }),
-      ecu: mat('#2fd47a', { metalness: 0.2, roughness: 0.6 }),
+      ecu: mat('#1f2329', { metalness: 0.7, roughness: 0.4 }),
       sensor: mat('#ffb03a', { metalness: 0.3 }),
       head: glass('#c0c8d6', 0.12),
       valve: mat('#3aa0ff', { metalness: 0.4 }),
-      exhaust: mat('#8d96a6', { metalness: 0.8 }),
+      exhaust: M.chrome.clone(),
       wire: mat('#ff4d5e', { metalness: 0.1, roughness: 0.7 }),
       tank: glass('#ff6a1a', 0.12),
     }),
-    []
+    [M]
   )
+  // geometrie realistiche: condotto spaccato, carburatore, vaschetta, scatola filtro, testata
+  const G = useMemo(() => {
+    const inner = [],
+      outer = []
+    for (let i = 0; i <= 60; i++) {
+      const x = -1.6 + (3.2 * i) / 60
+      inner.push([radiusAt(x, carb), x])
+      const fl = Math.abs(x + 1.6) < 0.05 || Math.abs(x - 1.6) < 0.05 || Math.abs(x + 0.5) < 0.04 || Math.abs(x - 0.5) < 0.04 ? 0.06 : 0
+      outer.push([R0 + 0.05 + fl, x])
+    }
+    const ductProfile = [...inner, ...outer.reverse()]
+    const ductPoly = []
+    for (let i = 0; i <= 30; i++) ductPoly.push([-0.5 + i / 30, radiusAt(-0.5 + i / 30, true)])
+    for (let i = 30; i >= 0; i--) ductPoly.push([-0.5 + i / 30, -radiusAt(-0.5 + i / 30, true)])
+    const body = diff(
+      union(rect(-0.46, -0.42, 0.46, 0.42), rect(-0.16, 0.3, 0.16, 0.95)),
+      [ductPoly],
+      rect(-0.085, 0, 0.085, 1.0),
+      strip([[0, -0.5], [0, -0.1]], 0.07)
+    )
+    const bowl = diff(rect(-0.42, -1.0, 0.42, -0.42), rect(-0.36, -0.94, 0.36, -0.42), rect(-0.05, -0.43, 0.05, -0.4))
+    const airbox = diff(union(rect(-2.75, -0.6, -1.55, 0.6), rect(-3.05, 0.12, -2.7, 0.42)), rect(-2.68, -0.53, -1.62, 0.53), rect(-3.1, 0.18, -2.6, 0.36), rect(-1.7, -0.27, -1.5, 0.27))
+    const zig = []
+    for (let i = 0; i <= 14; i++) zig.push([-2.5 + i * 0.05, i % 2 ? 0.38 : -0.38])
+    const filter = extrude(strip(zig, 0.012), 0.86, 0, -0.43)
+    const port = smooth([[1.55, 0], [1.82, -0.04], [2.0, -0.28], [2.05, -0.52]], 20)
+    const head = diff(
+      rect(1.55, -0.75, 2.62, 0.62),
+      strip(port, 0.4, 0.34),
+      rect(1.72, -1.1, 2.48, -0.58),
+      strip([[2.05 - 0.2 * 0.25, -0.55 + 0.98 * 0.25], [2.05 - 0.2 * 1.3, -0.55 + 0.98 * 1.3]], 0.08),
+      strip([[2.05 - 0.2 * 0.75, -0.55 + 0.98 * 0.75], [2.05 - 0.2 * 1.4, -0.55 + 0.98 * 1.4]], 0.3)
+    )
+    return {
+      ductProfile,
+      body,
+      bowl,
+      airbox,
+      filter,
+      head,
+      valve: valveGeo(0.17, 1.15, 0.03),
+      spring: springGeo(0.1, 5, 0.015),
+      float: lathe([[0, -0.07], [0.06, -0.065], [0.09, -0.04], [0.1, 0], [0.09, 0.04], [0.06, 0.065], [0, 0.07]], 24),
+      jet: lathe([[0, -0.62], [0.035, -0.62], [0.035, -0.55], [0.05, -0.55], [0.05, -0.5], [0.028, -0.5], [0.028, -0.14], [0, -0.14]], 20),
+      needle: lathe([[0, -0.36], [0.006, -0.36], [0.022, -0.05], [0.022, 0], [0, 0]], 16),
+      injector: lathe([[0, -0.24], [0.02, -0.24], [0.025, -0.18], [0.05, -0.17], [0.05, -0.05], [0.07, -0.03], [0.07, 0.12], [0.055, 0.14], [0.055, 0.2], [0, 0.2]], 24),
+      lambda: lathe([[0, -0.14], [0.03, -0.14], [0.03, -0.04], [0.05, -0.04], [0.05, 0.02], [0.035, 0.03], [0.03, 0.14], [0, 0.14]], 20),
+    }
+  }, [carb])
+  const valveG = useRef()
   const air = useRef()
   const fuel = useRef()
   const slide = useRef()
@@ -93,7 +145,7 @@ function Duct({ mode, throttleRef, hl, refs, showLabels = true }) {
       if (p.life > 1) {
         p.life = 0
         if (carb) {
-          p.p.set(0, 0, 0)
+          p.p.set(0.01, -0.12, 0)
           p.v.set(0.6 + th * 2.2, (Math.random() - 0.3) * 0.5, (Math.random() - 0.5) * 0.5)
         } else {
           p.p.copy(injTip)
@@ -112,6 +164,7 @@ function Duct({ mode, throttleRef, hl, refs, showLabels = true }) {
     })
     fuel.current.instanceMatrix.needsUpdate = true
     if (slide.current) slide.current.position.y = 0.05 + th * 0.42
+    if (valveG.current) valveG.current.position.set(0.2 * Math.max(0, Math.sin(t * 5)) * 0.1, -0.98 * Math.max(0, Math.sin(t * 5)) * 0.1, 0)
     if (butterfly.current) butterfly.current.rotation.z = (1 - th) * (Math.PI / 2 - 0.12)
     // evidenziazioni
     const H = (k, mm) => pulseHL(mm, hl.has(k), t)
@@ -127,27 +180,30 @@ function Duct({ mode, throttleRef, hl, refs, showLabels = true }) {
 
   return (
     <group>
-      {/* scatola filtro con filtro a pieghe */}
-      <RoundedBox ref={refs.airbox} args={[1.1, 1.1, 1.0]} radius={0.12} position={[-2.15, 0, 0]} material={m.box} />
+      {/* scatola filtro spaccata con filtro a pieghe */}
+      <group ref={refs.airbox} position={[-2.15, 0, 0]} />
+      <SectionBlock shape={G.airbox} depth={0.5} material={M.blackPaint} sectionMat={M.section} ghost={M.ghost} />
       <group ref={refs.filtro} position={[-2.15, 0, 0]}>
-        {Array.from({ length: 7 }).map((_, i) => (
-          <mesh key={i} material={m.filtro} position={[-0.18 + i * 0.06, 0, 0]} rotation={[0, 0, i % 2 ? 0.25 : -0.25]}>
-            <boxGeometry args={[0.02, 0.9, 0.85]} />
-          </mesh>
-        ))}
+        <mesh geometry={G.filter} material={m.filtro} rotation={[-Math.PI / 2, 0, 0]} position={[2.15, 0, 0]} />
+        <mesh material={M.rubber} position={[0, 0, 0]}>
+          <boxGeometry args={[0.8, 0.06, 0.9]} />
+        </mesh>
       </group>
-      {/* condotto (con Venturi nel carburatore) */}
-      <mesh geometry={ductGeo} material={m.duct} />
-      {/* testata con valvola di aspirazione */}
-      <RoundedBox args={[0.9, 1.4, 1.0]} radius={0.1} position={[2.05, -0.3, 0]} material={m.head} />
+      {/* condotto spaccato (con Venturi nel carburatore) */}
+      <group rotation={[0, 0, -Math.PI / 2]}>
+        <HalfLathe profile={G.ductProfile} material={carb ? M.alu : M.rubber} sectionMat={M.section} ghost={M.ghost} segs={48} />
+      </group>
+      {/* testata spaccata con condotto, valvola di aspirazione e molla */}
+      <SectionBlock shape={G.head} depth={0.55} material={M.alu} sectionMat={M.section} ghost={M.ghost} />
       <group ref={refs.collettore} position={[1.3, 0, 0]} />
-      <group position={[1.85, -0.25, 0]} rotation={[0, 0, 0.55]}>
-        <mesh material={m.valve}>
-          <cylinderGeometry args={[0.2, 0.2, 0.04, 24]} />
-        </mesh>
-        <mesh material={m.valve} position={[0, 0.5, 0]}>
-          <cylinderGeometry args={[0.03, 0.03, 1, 10]} />
-        </mesh>
+      <group position={[2.05, -0.55, 0]} rotation={[0, 0, 0.2]}>
+        <group ref={valveG}>
+          <mesh geometry={G.valve} material={m.valve} />
+          <mesh material={M.steel} position={[0, 1.08, 0]}>
+            <cylinderGeometry args={[0.09, 0.07, 0.04, 20]} />
+          </mesh>
+        </group>
+        <mesh geometry={G.spring} material={M.steelDark} position={[0, 0.75, 0]} scale={[1, 0.32, 1]} />
       </group>
 
       {/* particelle */}
@@ -162,25 +218,42 @@ function Duct({ mode, throttleRef, hl, refs, showLabels = true }) {
 
       {carb && (
         <group>
-          {/* corpo carburatore */}
-          <RoundedBox args={[0.9, 0.75, 0.75]} radius={0.06} position={[0, 0.05, 0]} material={m.box} />
-          {/* saracinesca */}
-          <mesh ref={slide} material={m.slide} position={[-0.22, 0.3, 0]}>
-            <boxGeometry args={[0.14, 0.62, 0.5]} />
+          {/* corpo carburatore in alluminio, spaccato */}
+          <SectionBlock shape={G.body} depth={0.4} material={M.alu} sectionMat={M.section} ghost={M.ghost} />
+          <mesh material={M.blackPaint} position={[0, 1.0, -0.0]}>
+            <cylinderGeometry args={[0.2, 0.2, 0.1, 28]} />
           </mesh>
-          <group ref={refs.saracinesca} position={[-0.22, 0.55, 0]} />
-          {/* vaschetta con benzina e galleggiante */}
-          <RoundedBox ref={refs.vaschetta} args={[0.8, 0.5, 0.7]} radius={0.06} position={[0, -0.72, 0]} material={m.box} />
-          <mesh material={m.fuel} position={[0, -0.82, 0]}>
-            <boxGeometry args={[0.74, 0.26, 0.64]} />
+          {/* saracinesca cilindrica con spillo conico */}
+          <group ref={slide} position={[0, 0.3, 0]}>
+            <mesh material={m.slide}>
+              <cylinderGeometry args={[0.08, 0.08, 0.62, 24]} />
+            </mesh>
+            <mesh geometry={G.needle} material={M.steel} position={[0, -0.31, 0]} />
+            <mesh material={M.steelDark} position={[0, 0.36, 0]}>
+              <cylinderGeometry args={[0.06, 0.06, 0.1, 6]} />
+            </mesh>
+          </group>
+          <group ref={refs.saracinesca} position={[0, 0.62, 0]} />
+          {/* vaschetta spaccata con benzina, galleggiante e spillo */}
+          <group ref={refs.vaschetta} position={[0, -0.72, 0]} />
+          <SectionBlock shape={G.bowl} depth={0.36} material={M.alu} sectionMat={M.section} ghost={M.ghost} />
+          <mesh material={m.fuel} position={[0, -0.83, -0.1]}>
+            <boxGeometry args={[0.72, 0.22, 0.5]} />
           </mesh>
-          <mesh material={m.float} position={[0.18, -0.66, 0]}>
-            <boxGeometry args={[0.22, 0.1, 0.3]} />
+          <group position={[0.17, -0.7, -0.05]}>
+            <mesh geometry={G.float} material={m.float} rotation={[0, 0, Math.PI / 2]} scale={[1, 1.4, 1]} />
+            <mesh material={M.brass} position={[-0.14, 0.06, 0]} rotation={[0, 0, 0.3]}>
+              <boxGeometry args={[0.2, 0.015, 0.04]} />
+            </mesh>
+          </group>
+          <mesh material={M.brass} position={[0.46, -0.52, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.04, 0.04, 0.18, 12]} />
           </mesh>
-          {/* getto */}
-          <mesh ref={refs.getto} material={m.getto} position={[0, -0.3, 0]}>
-            <cylinderGeometry args={[0.025, 0.04, 0.6, 10]} />
+          <mesh material={M.steel} position={[0, -1.02, 0]}>
+            <cylinderGeometry args={[0.05, 0.05, 0.06, 6]} />
           </mesh>
+          {/* getto principale in ottone */}
+          <mesh ref={refs.getto} geometry={G.jet} material={m.getto} />
           <group ref={refs.venturi} position={[0, 0.14, 0]} />
         </group>
       )}
@@ -188,21 +261,28 @@ function Duct({ mode, throttleRef, hl, refs, showLabels = true }) {
       {mode === 'injection' && (
         <group>
           {/* corpo farfallato con farfalla */}
-          <mesh material={m.box} position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.33, 0.33, 0.5, 28, 1, true]} />
+          <group rotation={[0, 0, -Math.PI / 2]}>
+            <HalfLathe profile={[[0.275, -0.28], [0.4, -0.28], [0.4, -0.22], [0.34, -0.2], [0.34, 0.2], [0.4, 0.22], [0.4, 0.28], [0.275, 0.28]]} material={M.alu} sectionMat={M.section} ghost={M.ghost} />
+          </group>
+          <mesh material={M.steel} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.025, 0.025, 0.9, 12]} />
           </mesh>
           <group ref={butterfly}>
-            <mesh material={m.slide} rotation={[0, 0, 0]}>
-              <cylinderGeometry args={[0.25, 0.25, 0.02, 28]} />
+            <mesh material={M.brass} rotation={[0, 0, 0]}>
+              <cylinderGeometry args={[0.262, 0.262, 0.018, 36]} />
             </mesh>
           </group>
           {/* iniettore */}
           <group ref={refs.iniettore} position={[0.78, 0.42, 0]} rotation={[0, 0, 0.88]}>
-            <mesh material={m.iniettore}>
-              <cylinderGeometry args={[0.06, 0.04, 0.42, 14]} />
+            <mesh geometry={G.injector} material={m.iniettore} />
+            <mesh material={M.steel} position={[0, -0.22, 0]}>
+              <cylinderGeometry args={[0.022, 0.016, 0.06, 12]} />
             </mesh>
-            <mesh material={m.iniettore} position={[0, 0.25, 0]}>
-              <boxGeometry args={[0.14, 0.12, 0.1]} />
+            <mesh material={M.rubber} position={[0, -0.12, 0]}>
+              <torusGeometry args={[0.052, 0.012, 8, 20]} />
+            </mesh>
+            <mesh material={mat('#2c6e49', { metalness: 0.1, roughness: 0.6 })} position={[0.07, 0.16, 0]}>
+              <boxGeometry args={[0.1, 0.09, 0.09]} />
             </mesh>
           </group>
           {/* serbatoio con pompa e tubo benzina */}
@@ -215,7 +295,17 @@ function Duct({ mode, throttleRef, hl, refs, showLabels = true }) {
           </mesh>
           <Pipe points={[[-0.05, 1.45, 0], [0.5, 1.3, 0], [0.62, 0.75, 0]]} r={0.025} material={m.fuel} />
           {/* centralina e cavi */}
-          <RoundedBox ref={refs.centralina} args={[0.7, 0.45, 0.2]} radius={0.04} position={[-2.0, 1.45, 0]} material={m.ecu} />
+          <group ref={refs.centralina} position={[-2.0, 1.45, 0]}>
+            <RoundedBox args={[0.7, 0.45, 0.16]} radius={0.03} material={m.ecu} />
+            {Array.from({ length: 7 }).map((_, i) => (
+              <mesh key={i} material={m.ecu} position={[-0.27 + i * 0.09, 0, 0.1]}>
+                <boxGeometry args={[0.03, 0.4, 0.06]} />
+              </mesh>
+            ))}
+            <mesh material={mat('#2fd47a', { metalness: 0.1, roughness: 0.6 })} position={[0.38, 0, 0]}>
+              <boxGeometry args={[0.08, 0.3, 0.12]} />
+            </mesh>
+          </group>
           <Pipe points={[[-1.65, 1.45, 0], [-0.9, 1.1, 0.35], [0.4, 0.95, 0.35], [0.72, 0.68, 0.1]]} r={0.015} material={m.wire} />
           <Pipe points={[[-1.9, 1.22, 0], [-1.3, 0.75, 0.4], [-0.05, 0.55, 0.4], [0.05, 0.37, 0.3]]} r={0.012} material={m.wire} />
           {/* sensori: posizione farfalla, pressione, temperatura aria */}
@@ -232,13 +322,11 @@ function Duct({ mode, throttleRef, hl, refs, showLabels = true }) {
           </group>
           {/* scarico con sonda lambda */}
           <Pipe points={[[2.4, -0.55, 0], [2.9, -0.7, 0], [3.1, -1.3, 0]]} r={0.12} material={m.exhaust} />
-          <mesh ref={refs.lambda} material={m.sensor} position={[2.85, -0.52, 0]} rotation={[0, 0, -0.3]}>
-            <cylinderGeometry args={[0.05, 0.05, 0.24, 10]} />
-          </mesh>
+          <mesh ref={refs.lambda} geometry={G.lambda} material={m.sensor} position={[2.85, -0.5, 0]} rotation={[0, 0, -0.3]} />
         </group>
       )}
       {/* manopola del gas con cavo */}
-      <Grip throttleRef={throttleRef} pos={carb ? [-1.05, 1.25, 0.3] : [-0.85, -0.95, 0.45]} cableTo={carb ? [-0.22, 0.62, 0] : [0, -0.36, 0.3]} gripRef={refs.grip} />
+      <Grip throttleRef={throttleRef} pos={carb ? [-1.05, 1.25, 0.3] : [-0.85, -0.95, 0.45]} cableTo={carb ? [0, 1.05, 0] : [0, -0.36, 0.3]} gripRef={refs.grip} />
       {!carb && <Pulley throttleRef={throttleRef} />}
     </group>
   )
