@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Stage from '../components/Stage'
 import GearboxScene, { GEARS } from '../scenes/GearboxScene'
-import { ListenBar, Md, Quiz, StepCard, StepProgress, Tacho } from '../components/ui'
+import { DeepDive, ListenBar, Md, Quiz, StepCard, StepProgress, Tacho } from '../components/ui'
+import { DEEP } from '../data/deep'
 import { GEARBOX_STEPS, QUIZ } from '../data/content'
 import { markVisited } from '../lib/progress'
 import { muteEngine, setEngineRpm } from '../lib/sound'
@@ -316,6 +317,7 @@ export default function Gearbox({ go }) {
                   Rapporti di questo cambio: {GEARS.map((g) => `${g.n}ª ${g.ratio.toFixed(2).replace('.', ',')}`).join(' · ')}
                 </div>
               )}
+              <DeepDive k={'cambio-' + i} text={DEEP.cambio[i]} />
             </StepCard>
           )}
         </div>

@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import Stage from './Stage'
-import { ListenBar, Md, Quiz, StepCard, StepProgress } from './ui'
+import { DeepDive, ListenBar, Md, Quiz, StepCard, StepProgress } from './ui'
+import { DEEP } from '../data/deep'
 import { markVisited } from '../lib/progress'
 import { muteEngine } from '../lib/sound'
 
@@ -57,6 +58,7 @@ export default function ChapterShell({ id, steps, quiz, go, Scene, camera, targe
               {renderControls && renderControls(step, ctrl, (patch) => setCtrl((c) => ({ ...c, ...patch })))}
               <Md text={step.body} />
               {step.tip && <div className="toast-inline info">💡 {step.tip}</div>}
+              <DeepDive k={id + '-' + i} text={DEEP[id]?.[i]} />
             </StepCard>
           )}
         </div>

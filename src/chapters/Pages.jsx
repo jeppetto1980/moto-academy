@@ -35,6 +35,7 @@ const BADGES = [
   { id: 'ciclistica', e: '🛞', n: 'Telaio d’acciaio', d: 'Quiz di telaio, freni e sospensioni superato', test: (p) => p.quiz?.ciclistica?.passed },
   { id: 'manutenzione', e: '✅', n: 'Pronto a partire', d: 'Quiz dei controlli superato', test: (p) => p.quiz?.manutenzione?.passed },
   { id: 'checklist', e: '📋', n: 'Checklist completa', d: 'Tutti i 7 controlli segnati', test: (p) => ['gomme', 'freni', 'luci', 'catena', 'liquidi', 'comandi', 'pilota'].every((k) => p.checks?.[k]) },
+  { id: 'approfondimenti', e: '🔬', n: 'Tecnico esperto', d: 'Hai aperto 20 approfondimenti', test: (p) => Object.keys(p.deep || {}).length >= 20 },
   { id: 'curioso', e: '🔍', n: 'Curioso', d: 'Hai aperto tutti i capitoli disponibili', test: (p) => CHAPTERS.filter((c) => c.ready).every((c) => p.visited?.[c.id]) },
 ]
 

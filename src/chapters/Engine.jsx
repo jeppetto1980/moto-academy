@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Stage from '../components/Stage'
 import EngineScene from '../scenes/EngineScene'
-import { ListenBar, Md, Quiz, StepCard, StepProgress, Tacho } from '../components/ui'
+import { DeepDive, ListenBar, Md, Quiz, StepCard, StepProgress, Tacho } from '../components/ui'
+import { DEEP } from '../data/deep'
 import { ENGINE_STEPS, PHASES, QUIZ } from '../data/content'
 import { markVisited } from '../lib/progress'
 import { muteEngine } from '../lib/sound'
@@ -85,6 +86,7 @@ export default function Engine({ go }) {
               )}
               <Md text={step.body} />
               {mode.type === 'phase' && <div className="toast-inline info">{PHASES[mode.phase].short}</div>}
+              <DeepDive k={'motore-' + i} text={DEEP.motore[i]} />
             </StepCard>
           )}
         </div>

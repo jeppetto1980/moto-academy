@@ -50,7 +50,7 @@ function Bolts({ n, r, z, mat, size = 0.012 }) {
 
 // ---------- MOTORE ----------
 export function Engine({ m }) {
-  const mt = useMemo(() => ({ chrome: chrome(), dome: Object.assign(chrome(), { side: THREE.DoubleSide }), steel: steel(), black: blackEng(), rubber: rubber(), glass: new THREE.MeshPhysicalMaterial({ color: '#ffb84a', transparent: true, opacity: 0.6, roughness: 0.05 }) }), [])
+  const mt = useMemo(() => ({ chrome: chrome(), dome: new THREE.MeshStandardMaterial({ color: '#d7dbe2', metalness: 0.9, roughness: 0.24, side: THREE.DoubleSide }), steel: steel(), black: blackEng(), rubber: rubber(), glass: new THREE.MeshPhysicalMaterial({ color: '#ffb84a', transparent: true, opacity: 0.6, roughness: 0.05 }) }), [])
   const caseGeo = useMemo(
     () =>
       extrudeSmooth(
@@ -70,8 +70,8 @@ export function Engine({ m }) {
       ),
     []
   )
-  const clutch = useDomeGeo(0.17, 0.05)
-  const gen = useDomeGeo(0.14, 0.045)
+  const clutch = useDomeGeo(0.17, 0.035)
+  const gen = useDomeGeo(0.14, 0.03)
   return (
     <group>
       {/* basamento */}
@@ -206,7 +206,7 @@ export function Exhaust() {
         </mesh>
       </group>
       {/* staffa di supporto al telaio */}
-      <Pipe points={[[-0.62, 0.56, -0.25], [-0.55, 0.72, -0.24], [-0.42, 0.86, -0.22]]} r={0.01} material={mt.steel} segs={12} />
+      <Pipe points={[[-0.62, 0.565, -0.25], [-0.65, 0.75, -0.25], [-0.66, 0.91, -0.245]]} r={0.011} material={mt.steel} segs={12} />
     </group>
   )
 }
@@ -387,7 +387,6 @@ export function Seat({ m, color }) {
       {/* pedane passeggero con supporti */}
       {[-1, 1].map((s) => (
         <group key={'pp' + s}>
-          <RoundedBox args={[0.2, 0.05, 0.012]} radius={0.01} position={[-0.6, 0.99, s * 0.2]} rotation={[0, 0, 0.9]} material={mt.alloy} />
           <mesh material={mt.side} position={[-0.66, 0.91, s * 0.26]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.016, 0.016, 0.1, 12]} />
           </mesh>

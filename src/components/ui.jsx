@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { getAutoRead, setAutoRead, speak, stop as stopVoice, useVoice, voiceSupported } from '../lib/voice'
-import { recordQuiz } from '../lib/progress'
+import { markDeep, recordQuiz } from '../lib/progress'
 
 // Testo con **grassetto** e paragrafi separati da una riga vuota
 export function Md({ text }) {
@@ -238,3 +238,43 @@ export function ListenBar({ text, k }) {
   )
 }
 
+
+// "Voglio approfondire": apre informazioni extra nella stessa schermata, con la loro lettura vocale
+export function DeepDive({ text, k }) {
+  const [open, setOpen] = useState(false)
+  useEffect(() => setOpen(false), [k])
+  if (!text) return null
+  return (
+    <div className="deep">
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        className={'deep-btn' + (open ? ' on' : '')}
+        onClick={() => {
+          const next = !open
+          setOpen(next)
+          if (next) markDeep(String(k))
+          else stopVoice()
+        }}
+      >
+        <span>{open ? '▲ Chiudi approfondimento' : '🔍 Voglio approfondire'}</span>
+      </motion.button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            className="deep-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
+            <div className="deep-inner">
+              <div className="deep-kicker">Approfondimento</div>
+              <ListenBar k={'deep-' + k} text={text} />
+              <Md text={text} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}

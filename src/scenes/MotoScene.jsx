@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import Workshop from './Workshop'
 import { Cables, ChainDrive, Dash, Handlebar, Headlight, Taillight, useTankGeo, Wheel as DetailWheel } from './MotoParts'
 import { Engine, Exhaust, FrontDetails, Indicators, RearHugger, RearSuspension, Seat, Shrouds } from './MotoParts2'
+import { ForkFeet, FrameDetails, RearCaliperMount, useTailGeo } from './MotoParts3'
 
 // ---------- utilità geometriche ----------
 function extrude(points, depth, bevel = 0.03, segs = 2) {
@@ -150,6 +151,8 @@ export const PAINTS = [
 
 function CameraRig({ focus, controlsRef }) {
   const { camera } = useThree()
+  // accesso per i test automatici delle inquadrature
+  if (typeof window !== 'undefined') window.__motoCam = { camera, controlsRef }
   const goal = useRef(null)
   useEffect(() => {
     const hp = focus && (HOTSPOTS[focus] || VIEWPOINTS[focus])
@@ -206,6 +209,7 @@ export default function MotoScene({ selected, onSelect, controlsRef, color = '#c
   }, [color])
 
   const tankGeo = useTankGeo()
+  const tailGeo = useTailGeo()
   const g = useMemo(
     () => ({
       // serbatoio: profilo laterale spigoloso
@@ -396,7 +400,13 @@ export default function MotoScene({ selected, onSelect, controlsRef, color = '#c
       <RoundedBox args={[0.12, 0.06, 0.34]} radius={0.02} position={[1.08, 1.34, 0]} rotation={[0, 0, -0.32]} material={m.black} />
 
       <Headlight m={m} castLight={!bare} />
-      <mesh geometry={g.flyscreen} material={m.paint} />
+      {/* cupolino curvo */}
+      <mesh material={m.paint} position={[1.075, 1.62, 0]} rotation={[0, 0, -0.42]} scale={[0.022, 0.13, 0.15]}>
+        <sphereGeometry args={[1, 32, 20]} />
+      </mesh>
+      <mesh material={m.black} position={[1.06, 1.57, 0]} rotation={[0, 0, -0.42]}>
+        <boxGeometry args={[0.02, 0.06, 0.06]} />
+      </mesh>
       <Dash m={m} />
       <Handlebar m={m} />
 
@@ -431,7 +441,11 @@ export default function MotoScene({ selected, onSelect, controlsRef, color = '#c
       </mesh>
       <Shrouds color={color} />
       <Seat m={m} color={color === '#16181d' ? '#ff6a1a' : color} />
-      <mesh geometry={g.tail} material={m.paint} />
+      <mesh geometry={tailGeo} material={m.paint} />
+      {/* sottocoda scuro */}
+      <mesh material={m.black} position={[-1.0, 1.385, 0]} rotation={[0, 0, 0.17]}>
+        <boxGeometry args={[0.55, 0.02, 0.17]} />
+      </mesh>
       <Taillight m={m} />
 
       {/* Radiatore (raffreddamento a liquido) */}
@@ -445,6 +459,9 @@ export default function MotoScene({ selected, onSelect, controlsRef, color = '#c
       </group>
 
       <Engine m={m} />
+      <ForkFeet m={m} />
+      <FrameDetails m={m} />
+      <RearCaliperMount m={m} />
       <Exhaust />
       <FrontDetails m={m} />
       <Indicators m={m} />

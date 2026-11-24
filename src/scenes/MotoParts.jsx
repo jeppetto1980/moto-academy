@@ -2,6 +2,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
+import { RacingCaliper } from './MotoParts3'
 import * as THREE from 'three'
 
 // ---------- utilità ----------
@@ -281,9 +282,9 @@ export function Wheel({ x, m, front, discGeo, spinRef }) {
       </group>
       {/* pinze */}
       {front ? (
-        [1, -1].map((s) => <Caliper key={s} discR={0.3} center={2.3} span={0.7} discZ={s * (halfW + 0.005)} side={s} material={m.gold} />)
+        [1, -1].map((s) => <RacingCaliper key={s} discR={0.3} center={2.3} span={0.72} discZ={s * (halfW + 0.005)} side={s} />)
       ) : (
-        <Caliper discR={0.22} center={-1.75} span={0.6} discZ={-(halfW + 0.005)} side={-1} material={m.black} small />
+        <RacingCaliper discR={0.22} center={-1.75} span={0.6} discZ={-(halfW + 0.005)} side={-1} small />
       )}
     </group>
   )

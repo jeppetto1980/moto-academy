@@ -45,6 +45,11 @@ export function markVisited(chapterId) {
   updateProgress({ visited: { ...(state.visited || {}), [chapterId]: true } })
 }
 
+export function markDeep(key) {
+  if (state.deep?.[key]) return
+  updateProgress({ deep: { ...(state.deep || {}), [key]: true } })
+}
+
 export function resetProgress() {
   state = {}
   save(state)
