@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import Stage from '../components/Stage'
 import EngineScene from '../scenes/EngineScene'
-import { DeepDive, ListenBar, Md, Quiz, StepCard, StepProgress, Tacho } from '../components/ui'
+import { DeepDive, ListenBar, Md, PanelHandle, Quiz, StepCard, StepProgress, Tacho } from '../components/ui'
 import { DEEP } from '../data/deep'
 import { ENGINE_STEPS, PHASES, QUIZ } from '../data/content'
 import { markVisited } from '../lib/progress'
@@ -10,6 +10,7 @@ import { muteEngine } from '../lib/sound'
 
 export default function Engine({ go }) {
   const [i, setI] = useState(0)
+  const layoutRef = useRef()
   const [dir, setDir] = useState(1)
   const [phase, setPhase] = useState(0)
   const [rpm, setRpm] = useState(3000)
@@ -31,7 +32,7 @@ export default function Engine({ go }) {
   const showPhase = !isQuiz && (mode.type !== 'run' || i === 0)
 
   return (
-    <div className="chapter-layout" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div ref={layoutRef} className="chapter-layout" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ position: 'relative' }} className="stage">
         <Stage camera={[3.6, 1.9, 7.8]} target={[0, 0.25, 0]} minD={3} maxD={13} shadowY={-2.3} className="stage-inner">
           <EngineScene mode={mode} rpm={rpm} highlight={isQuiz ? [] : step.highlight} onPhase={setPhase} />
@@ -57,6 +58,7 @@ export default function Engine({ go }) {
       </div>
 
       <div className="panel">
+        <PanelHandle layoutRef={layoutRef} />
         <StepProgress total={total} current={i} />
         <div className="panel-scroll">
           {isQuiz ? (

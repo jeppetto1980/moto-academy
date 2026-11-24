@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import Stage from './Stage'
-import { DeepDive, ListenBar, Md, Quiz, StepCard, StepProgress } from './ui'
+import { DeepDive, ListenBar, Md, PanelHandle, Quiz, StepCard, StepProgress } from './ui'
 import { DEEP } from '../data/deep'
 import { markVisited } from '../lib/progress'
 import { muteEngine } from '../lib/sound'
@@ -15,6 +15,7 @@ export default function ChapterShell({ id, steps, quiz, go, Scene, camera, targe
   const step = steps[Math.min(i, steps.length - 1)]
   const [ctrl, setCtrl] = useState(step.ctrl || {})
   const controls = useRef()
+  const layout = useRef()
 
   useEffect(() => {
     markVisited(id)
@@ -31,7 +32,7 @@ export default function ChapterShell({ id, steps, quiz, go, Scene, camera, targe
   const view = isQuiz ? steps[0] : step
 
   return (
-    <div className="chapter-layout" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div ref={layout} className="chapter-layout" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ position: 'relative' }} className="stage">
         <Stage camera={camera} target={target} minD={minD} maxD={maxD} shadowY={shadowY} className="stage-inner" controlsRef={controls}>
           <Scene step={view} ctrl={isQuiz ? view.ctrl || {} : ctrl} controlsRef={controls} />
@@ -44,6 +45,7 @@ export default function ChapterShell({ id, steps, quiz, go, Scene, camera, targe
       </div>
 
       <div className="panel">
+        <PanelHandle layoutRef={layout} />
         <StepProgress total={total} current={i} />
         <div className="panel-scroll">
           {isQuiz ? (

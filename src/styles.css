@@ -78,9 +78,10 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .menu-sep { height: 1px; background: var(--line); margin: 12px 4px; }
 
 /* Area 3D */
-.stage { position: relative; flex: none; height: 52vh; min-height: 300px; }
+.stage { position: relative; flex: none; height: 52vh; min-height: 120px; }
+.chapter-layout > .stage { height: var(--stage-h, 52vh); transition: height .08s linear; }
 .stage.tall { height: 58vh; }
-.stage.compact { height: 36vh; min-height: 230px; }
+.chapter-layout > .stage.compact { height: var(--stage-h, 36vh); }
 .stage canvas { touch-action: none; }
 .stage-inner { position: absolute; inset: 0; }
 .stage-hint {
@@ -282,3 +283,8 @@ input[type='range'] { width: 100%; accent-color: var(--accent); height: 28px; }
 .deep-inner { margin-top: 10px; padding: 12px 14px 4px; border-radius: 14px; background: rgba(58,160,255,.07); border: 1px solid rgba(58,160,255,.25); border-left: 4px solid #3aa0ff; }
 .deep-kicker { font-size: 11.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #6fb8ff; margin-bottom: 6px; }
 [data-theme='light'] .deep-kicker { color: #1a6fd0; }
+
+.panel-handle { display: flex; justify-content: center; align-items: center; height: 22px; margin: -8px 0 4px; cursor: grab; touch-action: none; }
+.panel-handle span { width: 46px; height: 5px; border-radius: 3px; background: var(--muted); opacity: .55; }
+.panel-handle:active span { background: var(--accent); opacity: 1; }
+@media (min-width: 760px) { .panel-handle { display: none; } .chapter-layout > .stage { height: auto; } }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Stage from '../components/Stage'
 import GearboxScene, { GEARS } from '../scenes/GearboxScene'
-import { DeepDive, ListenBar, Md, Quiz, StepCard, StepProgress, Tacho } from '../components/ui'
+import { DeepDive, ListenBar, Md, PanelHandle, Quiz, StepCard, StepProgress, Tacho } from '../components/ui'
 import { DEEP } from '../data/deep'
 import { GEARBOX_STEPS, QUIZ } from '../data/content'
 import { markVisited } from '../lib/progress'
@@ -28,6 +28,7 @@ const SEQ = [1, 0, 2, 3, 4, 5, 4, 3, 2, 0, 1]
 
 export default function Gearbox({ go }) {
   const [i, setI] = useState(0)
+  const layoutRef = useRef()
   const [dir, setDir] = useState(1)
   const total = GEARBOX_STEPS.length + 1
   const isQuiz = i === GEARBOX_STEPS.length
@@ -214,7 +215,7 @@ export default function Gearbox({ go }) {
   const gearLabel = ui.gear === 0 ? 'N' : ui.gear
 
   return (
-    <div className="chapter-layout" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div ref={layoutRef} className="chapter-layout" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ position: 'relative' }} className={'stage' + (interactive ? ' compact' : '')}>
         <Stage camera={[5.6, 2.7, 5.4]} target={[0, 0.1, 0]} minD={3} maxD={14} shadowY={-2.2} className="stage-inner">
           <GearboxScene sim={sim} step={stepFn} onPickGear={interactive ? pickGear : null} />
@@ -227,6 +228,7 @@ export default function Gearbox({ go }) {
       </div>
 
       <div className="panel">
+        <PanelHandle layoutRef={layoutRef} />
         <StepProgress total={total} current={i} />
         <div className="panel-scroll">
           {isQuiz ? (

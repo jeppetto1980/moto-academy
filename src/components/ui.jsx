@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getAutoRead, setAutoRead, speak, stop as stopVoice, useVoice, voiceSupported } from '../lib/voice'
 import { markDeep, recordQuiz } from '../lib/progress'
 
@@ -275,6 +275,68 @@ export function DeepDive({ text, k }) {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+// Maniglia per trascinare in su o in giù la parte di testo (riduce o allarga l'area 3D).
+// Un tocco veloce alterna tra "testo grande" e "normale". La scelta resta salvata sul dispositivo.
+const STAGE_KEY = 'moto-academy-stage-h'
+export function PanelHandle({ layoutRef }) {
+  const drag = useRef(null)
+  const apply = (px) => {
+    const el = layoutRef.current
+    if (!el) return
+    const vh = window.innerHeight
+    const h = Math.max(vh * 0.16, Math.min(vh * 0.62, px))
+    el.style.setProperty('--stage-h', h + 'px')
+    return h
+  }
+  useEffect(() => {
+    try {
+      const saved = parseFloat(localStorage.getItem(STAGE_KEY))
+      if (saved) apply(saved * window.innerHeight)
+    } catch {
+      /* ignora */
+    }
+  }, [])
+  const save = (h) => {
+    try {
+      localStorage.setItem(STAGE_KEY, String(h / window.innerHeight))
+    } catch {
+      /* ignora */
+    }
+  }
+  const stageNow = () => layoutRef.current?.querySelector('.stage')?.getBoundingClientRect().height || window.innerHeight * 0.52
+  return (
+    <div
+      className="panel-handle"
+      role="slider"
+      aria-label="Trascina per ingrandire il testo"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+        drag.current = { y: e.clientY, h: stageNow(), moved: false }
+      }}
+      onPointerMove={(e) => {
+        if (!drag.current) return
+        const dy = e.clientY - drag.current.y
+        if (Math.abs(dy) > 4) drag.current.moved = true
+        apply(drag.current.h + dy)
+      }}
+      onPointerUp={() => {
+        if (!drag.current) return
+        const vh = window.innerHeight
+        let h = stageNow()
+        if (!drag.current.moved) {
+          // tocco: alterna testo grande / normale
+          h = apply(h > vh * 0.3 ? vh * 0.2 : vh * 0.52)
+        }
+        save(h)
+        drag.current = null
+      }}
+      onPointerCancel={() => (drag.current = null)}
+    >
+      <span />
     </div>
   )
 }
