@@ -5,7 +5,7 @@ import { Html, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import Callout from '../components/Callout'
 import { mat, PathFlow, pulseHL, sprocketGeo } from './parts'
-import { useMech, circle, union, diff, extrude, lathe } from './mech'
+import { useMech, circle, union, diff, extrude, lathe, treadTex } from './mech'
 
 // Ruota dentata per catena: vani semicircolari dove si appoggiano i rulli, fori di alleggerimento e bulloni
 function chainSprocketGeo(r, teeth, depth, { windows = 0, hole = 0.08 } = {}) {
@@ -123,7 +123,7 @@ function Drive({ front = 14, rear = 43, sag = false, lube = false, refs, hl }) {
       plateA: mat('#4a4f58', { metalness: 0.9, roughness: 0.35 }),
       plateB: mat('#b9bec6', { metalness: 0.95, roughness: 0.25 }),
       roller: mat('#8c929c', { metalness: 0.9, roughness: 0.3 }),
-      tire: new THREE.MeshStandardMaterial({ color: '#16171a', metalness: 0, roughness: 0.9 }),
+      tire: new THREE.MeshStandardMaterial({ map: treadTex(2.6 / 8, 5.4 / 8, 44), bumpMap: treadTex(2.6 / 8, 5.4 / 8, 44), bumpScale: 6, metalness: 0, roughness: 0.88 }),
       rim: M.blackPaint,
       alu: M.alu,
       mark: new THREE.MeshBasicMaterial({ color: '#ff6a1a' }),

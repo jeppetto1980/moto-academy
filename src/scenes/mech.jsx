@@ -445,3 +445,51 @@ export const glowTex = () =>
     g.fillStyle = gr
     g.fillRect(0, 0, w, h)
   })
+
+// Battistrada a spina di pesce per gomme fatte al tornio (lathe): disegna gli intagli solo
+// nella fascia di v (0..1 lungo il profilo) che corrisponde alla corona della gomma.
+export function treadTex(vMin, vMax, blocks = 36) {
+  return canvasTex(`tread-${vMin}-${vMax}-${blocks}`, 2048, 512, (g, w, h) => {
+    g.fillStyle = '#3a3b40'
+    g.fillRect(0, 0, w, h)
+    // leggera grana della gomma
+    for (let i = 0; i < 6000; i++) {
+      g.fillStyle = `rgba(${Math.random() > 0.5 ? 255 : 0},${Math.random() > 0.5 ? 255 : 0},${Math.random() > 0.5 ? 255 : 0},0.03)`
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 2)
+    }
+    const y0 = (1 - vMax) * h
+    const y1 = (1 - vMin) * h
+    const yc = (y0 + y1) / 2
+    const half = (y1 - y0) / 2
+    const step = w / blocks
+    g.strokeStyle = '#050506'
+    g.lineCap = 'round'
+    for (let k = 0; k < blocks; k++) {
+      const x = k * step
+      // intagli principali a V, sfalsati sui due lati
+      g.lineWidth = step * 0.16
+      g.beginPath()
+      g.moveTo(x, yc - half * 0.12)
+      g.lineTo(x + step * 0.75, yc - half * 0.88)
+      g.stroke()
+      g.beginPath()
+      g.moveTo(x + step * 0.5, yc + half * 0.12)
+      g.lineTo(x + step * 1.25, yc + half * 0.88)
+      g.stroke()
+      // intagli secondari corti verso le spalle
+      g.lineWidth = step * 0.08
+      g.beginPath()
+      g.moveTo(x + step * 0.25, yc - half * 0.55)
+      g.lineTo(x + step * 0.55, yc - half * 0.98)
+      g.stroke()
+      g.beginPath()
+      g.moveTo(x + step * 0.75, yc + half * 0.55)
+      g.lineTo(x + step * 1.05, yc + half * 0.98)
+      g.stroke()
+    }
+    // spalle lisce leggermente più chiare (bordo dell'area battistrada)
+    g.fillStyle = 'rgba(255,255,255,0.05)'
+    g.fillRect(0, y0 - 6, w, 6)
+    g.fillRect(0, y1, w, 6)
+  }, [1, 1], true)
+}

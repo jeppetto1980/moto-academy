@@ -6,7 +6,7 @@ import * as THREE from 'three'
 import Callout from '../components/Callout'
 import MotoScene from './MotoScene'
 import { glass, mat, PathFlow, Pipe, useSpringGeo } from './parts'
-import { useMech, HalfLathe, lathe, springGeo, circle, diff, union, extrude } from './mech'
+import { useMech, HalfLathe, lathe, springGeo, circle, diff, union, extrude, treadTex } from './mech'
 import { RacingCaliper } from './MotoParts3'
 
 function Label({ text, color = '#eef1f6' }) {
@@ -274,7 +274,7 @@ function Brake({ refs }) {
 function Tire({ code, refs }) {
   const m = useMemo(
     () => ({
-      tread: mat('#1a1b1f', { metalness: 0, roughness: 0.9 }),
+      tread: new THREE.MeshStandardMaterial({ map: treadTex(2.7 / 20, 7.3 / 20, 34), bumpMap: treadTex(2.7 / 20, 7.3 / 20, 34), bumpScale: 6, metalness: 0, roughness: 0.88 }),
       carcass: mat('#d39b2a', { metalness: 0.2, roughness: 0.6 }),
       belt: mat('#8d939c', { metalness: 0.9, roughness: 0.35 }),
       liner: mat('#3a3f47', { metalness: 0, roughness: 0.8 }),
